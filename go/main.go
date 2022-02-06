@@ -450,46 +450,6 @@ func getApiV1Homes(c echo.Context) error {
 		homesResponse.Homes = matchedHome
 	}
 
-	// TODO N+1 => In句でかき集める方式で対応
-	// if startDate != "" && endDate != "" {
-	// 	homeIdList := []string{}
-
-	// 	for _, res := range homesResponse.Homes {
-	// 		homeIdList = append(homeIdList, res.Id)
-	// 	}
-
-	// 	var reservationHome []ReservationHome
-	// 	if len(homeIdList) > 0 {
-	// 		getIsReserveHomeQuery, args, err := sqlx.In("SELECT * FROM isubnb.reservation_home WHERE home_id IN (?) AND ? <= date AND date < ?", homeIdList, startDate, endDate)
-
-	// 		if err != nil {
-	// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
-	// 		}
-
-	// 		err = db.Select(&reservationHome, getIsReserveHomeQuery, args...)
-
-	// 		if err != nil {
-	// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
-	// 		}
-	// 	}
-
-	// 	reservationHomeMap := map[string][]ReservationHome{}
-
-	// 	for _, rh := range reservationHome {
-	// 		reservationHomeMap[strconv.Itoa(rh.HomeId)] = append(reservationHomeMap[strconv.Itoa(rh.HomeId)], rh)
-	// 	}
-
-	// 	var matchedHome []Home
-	// 	for _, home := range homesResponse.Homes {
-	// 		reservationHome, ok := reservationHomeMap[home.Id]
-	// 		if !ok || len(reservationHome) == 0 {
-	// 			matchedHome = append(matchedHome, home)
-	// 		}
-	// 	}
-
-	// 	homesResponse.Homes = matchedHome
-	// }
-
 	if location != "" {
 		homesResponse.Homes = koazee.StreamOf(homesResponse.Homes).Filter(func(home Home) bool {
 			return *home.Location == location
@@ -518,6 +478,93 @@ func getApiV1Homes(c echo.Context) error {
 	homesResponse.Count = len(homesResponse.Homes)
 	return c.JSON(http.StatusOK, homesResponse)
 }
+
+// func getApiV1Homes(c echo.Context) error {
+//
+// 	var homesResponse HomesResponse
+// 	homesResponse.Homes = []Home{}
+//
+// 	location := c.QueryParam("location")
+// 	startDate := c.QueryParam("start_date")
+// 	endDate := c.QueryParam("end_date")
+// 	numberOfPeople := c.QueryParam("number_of_people")
+// 	style := c.QueryParam("style")
+//
+// 	getAllHomesQuery := `SELECT * FROM isubnb.home ORDER BY rate DESC, price ASC, name ASC`
+// 	err := db.Select(&homesResponse.Homes, getAllHomesQuery)
+// 	if err != nil {
+// 		c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 		return c.NoContent(http.StatusInternalServerError)
+// 	}
+//
+// 	// TODO N+1 => In句でかき集める方式で対応
+// 	if startDate != "" && endDate != "" {
+// 		homeIdList := []string{}
+//
+// 		for _, res := range homesResponse.Homes {
+// 			homeIdList = append(homeIdList, res.Id)
+// 		}
+//
+// 		var reservationHome []ReservationHome
+// 		if len(homeIdList) > 0 {
+// 			getIsReserveHomeQuery, args, err := sqlx.In("SELECT * FROM isubnb.reservation_home WHERE home_id IN (?) AND ? <= date AND date < ?", homeIdList, startDate, endDate)
+//
+// 			if err != nil {
+// 				c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 			}
+//
+// 			err = db.Select(&reservationHome, getIsReserveHomeQuery, args...)
+//
+// 			if err != nil {
+// 				c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 			}
+// 		}
+//
+// 		reservationHomeMap := map[string][]ReservationHome{}
+//
+// 		for _, rh := range reservationHome {
+// 			reservationHomeMap[strconv.Itoa(rh.HomeId)] = append(reservationHomeMap[strconv.Itoa(rh.HomeId)], rh)
+// 		}
+//
+// 		var matchedHome []Home
+// 		for _, home := range homesResponse.Homes {
+// 			reservationHome, ok := reservationHomeMap[home.Id]
+// 			if !ok || len(reservationHome) == 0 {
+// 				matchedHome = append(matchedHome, home)
+// 			}
+// 		}
+//
+// 		homesResponse.Homes = matchedHome
+// 	}
+//
+// 	if location != "" {
+// 		homesResponse.Homes = koazee.StreamOf(homesResponse.Homes).Filter(func(home Home) bool {
+// 			return *home.Location == location
+// 		}).Out().Val().([]Home)
+// 	}
+// 	if numberOfPeople != "" {
+// 		numberOfPeopleInt, err := strconv.Atoi(numberOfPeople)
+// 		if err != nil {
+// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 			return c.NoContent(http.StatusBadRequest)
+// 		}
+// 		homesResponse.Homes = koazee.StreamOf(homesResponse.Homes).Filter(func(home Home) bool {
+// 			return *home.MaxPeopleNum >= numberOfPeopleInt
+// 		}).Out().Val().([]Home)
+// 	}
+// 	if style != "" {
+// 		homesResponse.Homes = koazee.StreamOf(homesResponse.Homes).Filter(func(home Home) bool {
+// 			return *home.Style == style
+// 		}).Out().Val().([]Home)
+// 	}
+//
+// 	homesResponse.Homes = koazee.StreamOf(homesResponse.Homes).Map(func(home Home) Home {
+// 		return convertToResponseHome(home)
+// 	}).Out().Val().([]Home)
+//
+// 	homesResponse.Count = len(homesResponse.Homes)
+// 	return c.JSON(http.StatusOK, homesResponse)
+// }
 
 func postApiV1Homes(c echo.Context) error {
 	form, err := c.MultipartForm()
