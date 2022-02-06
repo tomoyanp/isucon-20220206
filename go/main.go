@@ -44,7 +44,7 @@ type User struct {
 }
 
 type Home struct {
-	Id           string   `db:"id" json:"id"`
+	Id           int      `db:"id" json:"id"`
 	Name         *string  `db:"name" json:"name"`
 	Address      *string  `db:"address" json:"address"`
 	Location     *string  `db:"location" json:"location"`
@@ -252,6 +252,7 @@ type ErrorResponse struct {
 	Message string `json:"message"`
 }
 
+// TODO
 func contains(s []string, e string) bool {
 	for _, v := range s {
 		if e == v {
@@ -286,11 +287,11 @@ func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 }
 
 func convertToResponseHome(home Home) Home {
-	imagePath1 := "/api/v1/home/" + home.Id + "/image/1"
-	imagePath2 := "/api/v1/home/" + home.Id + "/image/2"
-	imagePath3 := "/api/v1/home/" + home.Id + "/image/3"
-	imagePath4 := "/api/v1/home/" + home.Id + "/image/4"
-	imagePath5 := "/api/v1/home/" + home.Id + "/image/5"
+	imagePath1 := "/api/v1/home/" + string(home.Id) + "/image/1"
+	imagePath2 := "/api/v1/home/" + string(home.Id) + "/image/2"
+	imagePath3 := "/api/v1/home/" + string(home.Id) + "/image/3"
+	imagePath4 := "/api/v1/home/" + string(home.Id) + "/image/4"
+	imagePath5 := "/api/v1/home/" + string(home.Id) + "/image/5"
 	home.Photo1 = &imagePath1
 	home.Photo2 = &imagePath2
 	home.Photo3 = &imagePath3
@@ -299,6 +300,7 @@ func convertToResponseHome(home Home) Home {
 	return home
 }
 
+// TODO あやしげ
 func convertToResponseActivity(activity Activity) Activity {
 	imagePath1 := "/api/v1/activity/" + activity.Id + "/image/1"
 	imagePath2 := "/api/v1/activity/" + activity.Id + "/image/2"
@@ -353,6 +355,8 @@ func main() {
 		e.Logger.Fatalf("failed to connect db: %v", err)
 		return
 	}
+
+	// TODO 増やしても良い
 	db.SetMaxOpenConns(10)
 	defer db.Close()
 
@@ -428,17 +432,45 @@ func getApiV1Homes(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// TODO N+1 => In句でかき集める方式で対応
 	if startDate != "" && endDate != "" {
+		homeIdList := []int{}
+
+		for _, res := range homesResponse.Homes {
+			homeIdList = append(homeIdList, res.Id)
+		}
+
+		var reservationHome []ReservationHome
+		if len(homeIdList) > 0 {
+			getIsReserveHomeQuery, args, err := sqlx.In("SELECT * FROM isubnb.reservation_home WHERE home_id IN (?) AND ? <= date AND date < ?", homeIdList, startDate, endDate)
+
+			if err != nil {
+				log.Print(err)
+			}
+
+			err = db.Select(&reservationHome, getIsReserveHomeQuery, args...)
+
+			if err != nil {
+				log.Print(err)
+			}
+		}
+
+		reservationHomeMap := map[int][]ReservationHome{}
+
+		for _, rh := range reservationHome {
+			reservationHomeMap[rh.HomeId] = append(reservationHomeMap[rh.HomeId], rh)
+		}
+
 		var matchedHome []Home
 		for _, home := range homesResponse.Homes {
-			var reservationHome []ReservationHome
-			getIsReserveHomeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
-			err := db.Select(&reservationHome, getIsReserveHomeQuery, home.Id, startDate, endDate)
-			if err != nil {
-				c.Echo().Logger.Errorf("Error occurred : %v", err)
-				return c.NoContent(http.StatusInternalServerError)
-			}
-			if len(reservationHome) == 0 {
+			// getIsReserveHomeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
+			// err := db.Select(&reservationHome, getIsReserveHomeQuery, home.Id, startDate, endDate)
+			// if err != nil {
+			// 	c.Echo().Logger.Errorf("Error occurred : %v", err)
+			// 	return c.NoContent(http.StatusInternalServerError)
+			// }
+			reservationHome, ok := reservationHomeMap[home.Id]
+			if !ok || len(reservationHome) == 0 {
 				matchedHome = append(matchedHome, home)
 			}
 		}
@@ -509,6 +541,7 @@ func postApiV1Homes(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
+	// TODO bulk insert
 	var counter = 0
 	for _, row := range records {
 		rm := RecordMapper{Record: row}
@@ -668,6 +701,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	date := time.Now()
 	endDate := date.AddDate(0, 0, reservableDays[0])
 
+	// TODO まとめて取れそう
 	var calenderList CalenderResponse
 	for endDate.Sub(date).Hours() >= 24 {
 		var reservationHomeId []ReservationHome
@@ -825,6 +859,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// TODO N+1
 	var response UserReservationHomeResponse
 	response.Reservations = []UserReservationHome{}
 	for _, reservationHome := range reservationHomeList {
@@ -921,6 +956,7 @@ func getApiV1Activities(c echo.Context) error {
 		}).Out().Val().([]Activity)
 	}
 
+	// TODO N+1
 	if date != "" {
 		var matchedActivities []Activity
 		for _, activity := range activitiesResponse.Activities {
@@ -1148,6 +1184,7 @@ func getApiV1UserReservationActivity(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// TODO N+1
 	var response UserReservationActivityResponse
 	response.Reservations = []UserReservationActivity{}
 	for _, reservationActivity := range reservationActivityList {
