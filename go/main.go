@@ -771,6 +771,8 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		formatDateList = append(formatDateList, formatDate)
 		date = date.AddDate(0, 0, 1)
 	}
+	formatDate := date.Format("2006-01-02")
+	formatDateList = append(formatDateList, formatDate)
 
 	var reservationHomeMap = map[string][]ReservationHome{}
 	if len(formatDateList) > 0 {
