@@ -61,8 +61,29 @@ type Home struct {
 	Photo4       *string  `db:"photo_4" json:"photo_4"`
 	Photo5       *string  `db:"photo_5" json:"photo_5"`
 	Rate         *float64 `db:"rate" json:"rate"`
-	RateReverse  *float64 `db:"rate_reverse" json:"rate_reverse"`
 	OwnerId      string   `db:"owner_id" json:"owner_id"`
+}
+
+func selectHome() string {
+	return `
+	SELECT
+	id,
+	name,
+	address,
+	location,
+	max_people_num,
+	description,
+	catch_phrase,
+	attribute,
+	style,
+	photo_1,
+	photo_2,
+	photo_3,
+	photo_4,
+	photo_5,
+	rate,
+	owner_id
+	`
 }
 
 type HomesResponse struct {
@@ -493,7 +514,7 @@ func getApiV1Homes(c echo.Context) error {
 	style := c.QueryParam("style")
 
 	// getAllHomesQuery := `SELECT * FROM isubnb.home ORDER BY rate DESC, price ASC, name ASC`
-	getAllHomesQuery := `SELECT * FROM isubnb.home ORDER BY rate_reverse ASC, price ASC, name ASC`
+	getAllHomesQuery := selectHome() + ` FROM isubnb.home ORDER BY rate_reverse ASC, price ASC, name ASC`
 	err := db.Select(&homesResponse.Homes, getAllHomesQuery)
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -654,7 +675,7 @@ func getApiV1Home(c echo.Context) error {
 	var homeList []Home
 
 	// 宿確認
-	getHomeQuery := `SELECT * FROM isubnb.home WHERE id = ?`
+	getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
 	err := db.Select(&homeList, getHomeQuery, homeId)
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -683,7 +704,7 @@ func getApiV1HomeImage(c echo.Context) error {
 	homeId := c.Param("homeId")
 
 	var homeList []Home
-	getHomeQuery := `SELECT * FROM isubnb.home WHERE id = ?`
+	getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
 	err := db.Select(&homeList, getHomeQuery, homeId)
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -748,7 +769,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	}
 
 	// 宿確認
-	getHomeQuery := `SELECT * FROM isubnb.home WHERE id = ?`
+	getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
 	err = db.Select(&homeList, getHomeQuery, homeId)
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -889,7 +910,7 @@ func postApiV1ReservationHome(c echo.Context) error {
 	}
 
 	var home []Home
-	getHomeQuery := `SELECT * FROM isubnb.home WHERE id = ?`
+	getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
 	err = db.Select(&home, getHomeQuery, request.HomeId)
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -990,7 +1011,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 	response.Reservations = []UserReservationHome{}
 	for _, reservationHome := range reservationHomeList {
 		var homeList []Home
-		getHomeQuery := `SELECT * FROM isubnb.home WHERE id = ?`
+		getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
 		err = db.Select(&homeList, getHomeQuery, reservationHome.HomeId)
 		if err != nil {
 			c.Echo().Logger.Errorf("Error occurred : %v", err)
