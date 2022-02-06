@@ -29,8 +29,8 @@ CREATE TABLE  isubnb.home
     photo_4         MEDIUMTEXT NULL,
     photo_5         MEDIUMTEXT NULL,
     rate            DOUBLE NULL,
-    rate_reverse    DOUBLE AS (-rate),
     owner_id        BIGINT NOT NULL,
+    rate_reverse    DOUBLE AS (-rate),
     PRIMARY KEY (id),
     INDEX           home_user_id_fk_idx (owner_id ASC),
     CONSTRAINT home_user_id_fk
