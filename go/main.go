@@ -61,6 +61,7 @@ type Home struct {
 	Photo4       *string  `db:"photo_4" json:"photo_4"`
 	Photo5       *string  `db:"photo_5" json:"photo_5"`
 	Rate         *float64 `db:"rate" json:"rate"`
+	RateReverse  *float64 `db:"rate_reverse" json:"rate_reverse"`
 	OwnerId      string   `db:"owner_id" json:"owner_id"`
 }
 
