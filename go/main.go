@@ -981,6 +981,7 @@ func postApiV1ReservationHome(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+// GOING
 func getApiV1UserReservationHome(c echo.Context) error {
 	userId := c.Param("userId")
 
@@ -1009,36 +1010,75 @@ func getApiV1UserReservationHome(c echo.Context) error {
 	// TODO N+1
 	var response UserReservationHomeResponse
 	response.Reservations = []UserReservationHome{}
+
+	var reservationHomeIdList []string
+	var reserveIdList []string
 	for _, reservationHome := range reservationHomeList {
-		var homeList []Home
-		getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
-		err = db.Select(&homeList, getHomeQuery, reservationHome.HomeId)
-		if err != nil {
+		reservationHomeIdList = append(reservationHomeIdList, reservationHome.HomeId)
+		reserveIdList = append(reserveIdList, reservationHome.ReservationId)
+	}
+
+	// Home
+	homeList := []Home{}
+	getHomeQuery, args, err := sqlx.In(selectHome()+` FROM isubnb.home WHERE id IN(?)`, reservationHomeIdList)
+
+	if err != nil {
+		c.Echo().Logger.Errorf("Error occurred : %v", err)
+	}
+
+	err = db.Select(&homeList, getHomeQuery, args...)
+
+	if err != nil {
+		c.Echo().Logger.Errorf("Error occurred : %v", err)
+	}
+
+	homeMap := map[string]Home{}
+	for _, home := range homeList {
+		homeMap[home.Id] = home
+	}
+
+	// Reservation
+
+	reservationList := []ReservationHome{}
+	getReservationQuery, args, err := sqlx.In(`SELECT date FROM isubnb.reservation_home WHERE id IN(?) ORDER BY date asc`, reserveIdList)
+
+	if err != nil {
+		c.Echo().Logger.Errorf("Error occurred : %v", err)
+	}
+
+	err = db.Select(&reservationList, getReservationQuery, args...)
+
+	if err != nil {
+		c.Echo().Logger.Errorf("Error occurred : %v", err)
+	}
+
+	reservationMap := map[string][]ReservationHome{}
+	for _, reservation := range reservationList {
+		reservationMap[reservation.Id] = append(reservationMap[reservation.Id], reservation)
+	}
+
+	for _, reservationHome := range reservationHomeList {
+		homeResult, ok := homeMap[reservationHome.HomeId]
+		if !ok {
 			c.Echo().Logger.Errorf("Error occurred : %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		home := convertToResponseHome(homeList[0])
+		home := convertToResponseHome(homeResult)
 
 		reserveId := reservationHome.ReservationId
 		numberOfPeople := reservationHome.NumberOfPeople
 
-		var startDateTime []time.Time
-		getStartDateQuery := `SELECT min(date) FROM isubnb.reservation_home WHERE id = ?`
-		err := db.Select(&startDateTime, getStartDateQuery, reserveId)
-		if err != nil {
+		// var startDateTime []time.Time
+		reserveRes, ok := reservationMap[reserveId]
+		if !ok {
 			c.Echo().Logger.Errorf("Error occurred : %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
-		startDate := startDateTime[0].Format("2006-01-02")
+		startDate := strings.Split(*reserveRes[0].Date, "T")[0]
 
-		var endDateTime []time.Time
-		getEndDateQuery := `SELECT max(date) FROM isubnb.reservation_home WHERE id = ?`
-		err = db.Select(&endDateTime, getEndDateQuery, reserveId)
-		if err != nil {
-			c.Echo().Logger.Errorf("Error occurred : %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
-		endDate := endDateTime[0].AddDate(0, 0, 1).Format("2006-01-02")
+		endDateOriginal := strings.Split(*reserveRes[len(reserveRes)].Date, "T")[0]
+		endDateTime, _ := time.Parse("2006-01-02", endDateOriginal)
+		endDate := endDateTime.AddDate(0, 0, 1).Format("2006-01-02")
 
 		var userReservationHome UserReservationHome
 		userReservationHome.ReserveId = reserveId
@@ -1052,6 +1092,78 @@ func getApiV1UserReservationHome(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, response)
 }
+
+// func getApiV1UserReservationHome(c echo.Context) error {
+// 	userId := c.Param("userId")
+//
+// 	var user []User
+// 	getUserQuery := `SELECT * FROM isubnb.user WHERE id = ?`
+// 	err := db.Select(&user, getUserQuery, userId)
+// 	if err != nil {
+// 		c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 		return c.NoContent(http.StatusInternalServerError)
+// 	}
+// 	if len(user) == 0 {
+// 		response := ErrorResponse{
+// 			Message: "対象ユーザが存在しません。",
+// 		}
+// 		return c.JSON(http.StatusBadRequest, response)
+// 	}
+//
+// 	var reservationHomeList []ReservationHomeInfo
+// 	getReservationHomeQuery := `SELECT DISTINCT rh.id as reservation_id, rh.number_of_people, rh.home_id FROM isubnb.user u JOIN isubnb.reservation_home rh ON u.id = rh.user_id WHERE u.id = ? AND rh.is_deleted = ?`
+// 	err = db.Select(&reservationHomeList, getReservationHomeQuery, userId, 0)
+// 	if err != nil {
+// 		c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 		return c.NoContent(http.StatusInternalServerError)
+// 	}
+//
+// 	// TODO N+1
+// 	var response UserReservationHomeResponse
+// 	response.Reservations = []UserReservationHome{}
+// 	for _, reservationHome := range reservationHomeList {
+// 		var homeList []Home
+// 		getHomeQuery := selectHome() + ` FROM isubnb.home WHERE id = ?`
+// 		err = db.Select(&homeList, getHomeQuery, reservationHome.HomeId)
+// 		if err != nil {
+// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 			return c.NoContent(http.StatusInternalServerError)
+// 		}
+// 		home := convertToResponseHome(homeList[0])
+//
+// 		reserveId := reservationHome.ReservationId
+// 		numberOfPeople := reservationHome.NumberOfPeople
+//
+// 		var startDateTime []time.Time
+// 		getStartDateQuery := `SELECT min(date) FROM isubnb.reservation_home WHERE id = ?`
+// 		err := db.Select(&startDateTime, getStartDateQuery, reserveId)
+// 		if err != nil {
+// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 			return c.NoContent(http.StatusInternalServerError)
+// 		}
+// 		startDate := startDateTime[0].Format("2006-01-02")
+//
+// 		var endDateTime []time.Time
+// 		getEndDateQuery := `SELECT max(date) FROM isubnb.reservation_home WHERE id = ?`
+// 		err = db.Select(&endDateTime, getEndDateQuery, reserveId)
+// 		if err != nil {
+// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
+// 			return c.NoContent(http.StatusInternalServerError)
+// 		}
+// 		endDate := endDateTime[0].AddDate(0, 0, 1).Format("2006-01-02")
+//
+// 		var userReservationHome UserReservationHome
+// 		userReservationHome.ReserveId = reserveId
+// 		userReservationHome.StartDate = startDate
+// 		userReservationHome.EndDate = endDate
+// 		userReservationHome.NumberOfPeople = numberOfPeople
+// 		userReservationHome.ReserveHome = home
+//
+// 		response.Reservations = append(response.Reservations, userReservationHome)
+// 	}
+//
+// 	return c.JSON(http.StatusOK, response)
+// }
 
 func deleteApiV1ReservationHome(c echo.Context) error {
 	reservationHomeId := c.Param("reservationHomeId")
