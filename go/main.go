@@ -786,8 +786,15 @@ func getApiV1HomeCalendar(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
+		var layout = "2022-02-20T00:00:00+09:00"
 		for _, reservationHome := range reservationHomeId {
-			reservationHomeMap[*reservationHome.Date] = append(reservationHomeMap[*reservationHome.Date], reservationHome)
+			orgDate, err := time.Parse(layout, *reservationHome.Date)
+			if err != nil {
+				log.Print(err)
+			}
+
+			fmtDate := orgDate.Format("2006-01-02")
+			reservationHomeMap[fmtDate] = append(reservationHomeMap[fmtDate], reservationHome)
 		}
 	}
 
