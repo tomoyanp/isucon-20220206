@@ -44,7 +44,7 @@ type User struct {
 }
 
 type Home struct {
-	Id           int      `db:"id" json:"id"`
+	Id           string   `db:"id" json:"id"`
 	Name         *string  `db:"name" json:"name"`
 	Address      *string  `db:"address" json:"address"`
 	Location     *string  `db:"location" json:"location"`
@@ -287,11 +287,11 @@ func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 }
 
 func convertToResponseHome(home Home) Home {
-	imagePath1 := "/api/v1/home/" + string(home.Id) + "/image/1"
-	imagePath2 := "/api/v1/home/" + string(home.Id) + "/image/2"
-	imagePath3 := "/api/v1/home/" + string(home.Id) + "/image/3"
-	imagePath4 := "/api/v1/home/" + string(home.Id) + "/image/4"
-	imagePath5 := "/api/v1/home/" + string(home.Id) + "/image/5"
+	imagePath1 := "/api/v1/home/" + home.Id + "/image/1"
+	imagePath2 := "/api/v1/home/" + home.Id + "/image/2"
+	imagePath3 := "/api/v1/home/" + home.Id + "/image/3"
+	imagePath4 := "/api/v1/home/" + home.Id + "/image/4"
+	imagePath5 := "/api/v1/home/" + home.Id + "/image/5"
 	home.Photo1 = &imagePath1
 	home.Photo2 = &imagePath2
 	home.Photo3 = &imagePath3
@@ -434,7 +434,7 @@ func getApiV1Homes(c echo.Context) error {
 
 	// TODO N+1 => In句でかき集める方式で対応
 	if startDate != "" && endDate != "" {
-		homeIdList := []int{}
+		homeIdList := []string{}
 
 		for _, res := range homesResponse.Homes {
 			homeIdList = append(homeIdList, res.Id)
@@ -455,43 +455,19 @@ func getApiV1Homes(c echo.Context) error {
 			}
 		}
 
-		reservationHomeMap := map[int][]ReservationHome{}
+		reservationHomeMap := map[string][]ReservationHome{}
 
 		for _, rh := range reservationHome {
-			reservationHomeMap[rh.HomeId] = append(reservationHomeMap[rh.HomeId], rh)
+			reservationHomeMap[strconv.Itoa(rh.HomeId)] = append(reservationHomeMap[strconv.Itoa(rh.HomeId)], rh)
 		}
 
 		var matchedHome []Home
-		var hogeRow []Home
 		for _, home := range homesResponse.Homes {
-			hoge := []ReservationHome{}
-			hogeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
-			err := db.Select(&hoge, hogeQuery, home.Id, startDate, endDate)
-			if err != nil {
-				c.Echo().Logger.Errorf("Error occurred : %v", err)
-				return c.NoContent(http.StatusInternalServerError)
-			}
 			reservationHome, ok := reservationHomeMap[home.Id]
-
-			log.Print("==============================")
-			log.Print(hoge)
-			log.Print(reservationHomeMap)
-
 			if !ok || len(reservationHome) == 0 {
 				matchedHome = append(matchedHome, home)
 			}
-
-			if len(hoge) == 0 {
-				hogeRow = append(hogeRow, home)
-			}
-
 		}
-
-		log.Print("matchedRow")
-		log.Print(matchedHome)
-
-		log.Print("hogeRow")
-		log.Print(hogeRow)
 
 		homesResponse.Homes = matchedHome
 	}
@@ -722,6 +698,10 @@ func getApiV1HomeCalendar(c echo.Context) error {
 
 	// TODO まとめて取れそう
 	// GOING
+
+	for endDate.Sub(date).Hours() >= 24 {
+
+	}
 	var calenderList CalenderResponse
 	for endDate.Sub(date).Hours() >= 24 {
 		var reservationHomeId []ReservationHome
