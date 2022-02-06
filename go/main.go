@@ -865,6 +865,8 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	return c.JSON(http.StatusOK, calenderList)
 }
 
+var reservationRegex, _ = regexp.Compile("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")
+
 func postApiV1ReservationHome(c echo.Context) error {
 	var request ReservationHomeRequest
 	err := c.Bind(&request)
@@ -927,8 +929,7 @@ func postApiV1ReservationHome(c echo.Context) error {
 		}
 		return c.JSON(http.StatusBadRequest, response)
 	}
-	r, _ := regexp.Compile("^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$")
-	if !r.MatchString(*request.StartDate) || !r.MatchString(*request.EndDate) {
+	if !reservationRegex.MatchString(*request.StartDate) || !reservationRegex.MatchString(*request.EndDate) {
 		response := ErrorResponse{
 			Message: "日付はyyyy-mm-dd形式で入力してください。",
 		}
