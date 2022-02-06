@@ -762,7 +762,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	endDate := date.AddDate(0, 0, reservableDays[0])
 
 	// TODO まとめて取れそう
-	// GOING
+	// とりあえずやった
 
 	formatDateList := []string{}
 	for endDate.Sub(date).Hours() >= 24 {
@@ -774,7 +774,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	var reservationHomeMap = map[string][]ReservationHome{}
 	if len(formatDateList) > 0 {
 		var reservationHomeId []ReservationHome
-		getReservationHomeQuery, args, err := sqlx.In(`SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND DATE(date) = IN(?) AND is_deleted = ? ORDER BY user_id, home_id`, homeId, formatDateList, 0)
+		getReservationHomeQuery, args, err := sqlx.In(`SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND DATE(date) IN(?) AND is_deleted = ? ORDER BY user_id, home_id`, homeId, formatDateList, 0)
 
 		if err != nil {
 			log.Print(err)
@@ -791,6 +791,9 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		}
 	}
 
+	log.Print("reservationHomeMap")
+	log.Print(reservationHomeMap)
+
 	var calenderList CalenderResponse
 
 	newDate := time.Now()
@@ -798,6 +801,11 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		formatDate := newDate.Format("2006-01-02")
 		var isReservable IsReservable
 		isReservable.Date = formatDate
+		log.Print("=============")
+		log.Print("formatDate")
+		log.Print(formatDate)
+		log.Print("matched reservationHomeMap")
+		log.Print(reservationHomeMap[formatDate])
 		if len(reservationHomeMap[formatDate]) == 0 {
 			isReservable.Available = true
 		} else {
