@@ -787,8 +787,6 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	endDate := date.AddDate(0, 0, reservableDays[0])
 	newEndDate := newDate.AddDate(0, 0, reservableDays[0])
 
-	log.Print("endDate1")
-	log.Print(endDate)
 
 	// TODO まとめて取れそう
 	// とりあえずやった
@@ -799,7 +797,6 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		formatDateList = append(formatDateList, formatDate)
 		date = date.AddDate(0, 0, 1)
 	}
-	log.Print(formatDateList)
 
 	var reservationHomeMap = map[string][]ReservationHome{}
 	if len(formatDateList) > 0 {
@@ -843,10 +840,6 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		}
 		calenderList.Items = append(calenderList.Items, isReservable)
 		newDate = newDate.AddDate(0, 0, 1)
-		log.Print("=================")
-		log.Print(newDate)
-		log.Print(endDate)
-		log.Print(endDate.Sub(newDate).Hours())
 	}
 
 	// var calenderList CalenderResponse
@@ -1052,18 +1045,12 @@ func getApiV1UserReservationHome(c echo.Context) error {
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
 	}
-	log.Print("idList")
-	log.Print(reserveIdList)
-	log.Print("sql exec")
-	log.Print(reservationList)
 
 	reservationMap := map[string][]ReservationHome{}
 	for _, reservation := range reservationList {
 		reservationMap[reservation.Id] = append(reservationMap[reservation.Id], reservation)
 	}
 
-	log.Print("reservationMap")
-	log.Print(reservationMap)
 
 	for _, reservationHome := range reservationHomeList {
 		homeResult, ok := homeMap[reservationHome.HomeId]
@@ -1078,9 +1065,6 @@ func getApiV1UserReservationHome(c echo.Context) error {
 
 		// var startDateTime []time.Time
 		reserveRes, ok := reservationMap[reserveId]
-		log.Print("=== for roop ===")
-		log.Print(reserveRes)
-		log.Print(reserveId)
 		if !ok {
 			c.Echo().Logger.Errorf("Error occurred : %v", err)
 			return c.NoContent(http.StatusInternalServerError)
@@ -1106,7 +1090,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 
 // func getApiV1UserReservationHome(c echo.Context) error {
 // 	userId := c.Param("userId")
-//
+// 
 // 	var user []User
 // 	getUserQuery := `SELECT * FROM isubnb.user WHERE id = ?`
 // 	err := db.Select(&user, getUserQuery, userId)
@@ -1120,7 +1104,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 // 		}
 // 		return c.JSON(http.StatusBadRequest, response)
 // 	}
-//
+// 
 // 	var reservationHomeList []ReservationHomeInfo
 // 	getReservationHomeQuery := `SELECT DISTINCT rh.id as reservation_id, rh.number_of_people, rh.home_id FROM isubnb.user u JOIN isubnb.reservation_home rh ON u.id = rh.user_id WHERE u.id = ? AND rh.is_deleted = ?`
 // 	err = db.Select(&reservationHomeList, getReservationHomeQuery, userId, 0)
@@ -1128,7 +1112,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 // 		c.Echo().Logger.Errorf("Error occurred : %v", err)
 // 		return c.NoContent(http.StatusInternalServerError)
 // 	}
-//
+// 
 // 	// TODO N+1
 // 	var response UserReservationHomeResponse
 // 	response.Reservations = []UserReservationHome{}
@@ -1141,10 +1125,10 @@ func getApiV1UserReservationHome(c echo.Context) error {
 // 			return c.NoContent(http.StatusInternalServerError)
 // 		}
 // 		home := convertToResponseHome(homeList[0])
-//
+// 
 // 		reserveId := reservationHome.ReservationId
 // 		numberOfPeople := reservationHome.NumberOfPeople
-//
+// 
 // 		var startDateTime []time.Time
 // 		getStartDateQuery := `SELECT min(date) FROM isubnb.reservation_home WHERE id = ?`
 // 		err := db.Select(&startDateTime, getStartDateQuery, reserveId)
@@ -1153,7 +1137,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 // 			return c.NoContent(http.StatusInternalServerError)
 // 		}
 // 		startDate := startDateTime[0].Format("2006-01-02")
-//
+// 
 // 		var endDateTime []time.Time
 // 		getEndDateQuery := `SELECT max(date) FROM isubnb.reservation_home WHERE id = ?`
 // 		err = db.Select(&endDateTime, getEndDateQuery, reserveId)
@@ -1162,17 +1146,17 @@ func getApiV1UserReservationHome(c echo.Context) error {
 // 			return c.NoContent(http.StatusInternalServerError)
 // 		}
 // 		endDate := endDateTime[0].AddDate(0, 0, 1).Format("2006-01-02")
-//
+// 
 // 		var userReservationHome UserReservationHome
 // 		userReservationHome.ReserveId = reserveId
 // 		userReservationHome.StartDate = startDate
 // 		userReservationHome.EndDate = endDate
 // 		userReservationHome.NumberOfPeople = numberOfPeople
 // 		userReservationHome.ReserveHome = home
-//
+// 
 // 		response.Reservations = append(response.Reservations, userReservationHome)
 // 	}
-//
+// 
 // 	return c.JSON(http.StatusOK, response)
 // }
 
