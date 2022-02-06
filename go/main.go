@@ -1018,6 +1018,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 		reserveIdList = append(reserveIdList, reservationHome.ReservationId)
 	}
 
+
 	// Home
 	homeList := []Home{}
 	getHomeQuery, args, err := sqlx.In(selectHome()+` FROM isubnb.home WHERE id IN(?)`, reservationHomeIdList)
@@ -1040,7 +1041,7 @@ func getApiV1UserReservationHome(c echo.Context) error {
 	// Reservation
 
 	reservationList := []ReservationHome{}
-	getReservationQuery, args, err := sqlx.In(`SELECT date FROM isubnb.reservation_home WHERE id IN(?) ORDER BY date asc`, reserveIdList)
+	getReservationQuery, args, err := sqlx.In(`SELECT id, date FROM isubnb.reservation_home WHERE id IN(?) ORDER BY date asc`, reserveIdList)
 
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -1051,11 +1052,18 @@ func getApiV1UserReservationHome(c echo.Context) error {
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
 	}
+	log.Print("idList")
+	log.Print(reserveIdList)
+	log.Print("sql exec")
+	log.Print(reservationList)
 
 	reservationMap := map[string][]ReservationHome{}
 	for _, reservation := range reservationList {
 		reservationMap[reservation.Id] = append(reservationMap[reservation.Id], reservation)
 	}
+
+	log.Print("reservationMap")
+	log.Print(reservationMap)
 
 	for _, reservationHome := range reservationHomeList {
 		homeResult, ok := homeMap[reservationHome.HomeId]
@@ -1070,13 +1078,16 @@ func getApiV1UserReservationHome(c echo.Context) error {
 
 		// var startDateTime []time.Time
 		reserveRes, ok := reservationMap[reserveId]
+		log.Print("=== for roop ===")
+		log.Print(reserveRes)
+		log.Print(reserveId)
 		if !ok {
 			c.Echo().Logger.Errorf("Error occurred : %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
 		startDate := strings.Split(*reserveRes[0].Date, "T")[0]
 
-		endDateOriginal := strings.Split(*reserveRes[len(reserveRes)].Date, "T")[0]
+		endDateOriginal := strings.Split(*reserveRes[len(reserveRes)-1].Date, "T")[0]
 		endDateTime, _ := time.Parse("2006-01-02", endDateOriginal)
 		endDate := endDateTime.AddDate(0, 0, 1).Format("2006-01-02")
 
