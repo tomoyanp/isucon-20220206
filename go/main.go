@@ -462,6 +462,7 @@ func getApiV1Homes(c echo.Context) error {
 		}
 
 		var matchedHome []Home
+		var hogeRow []Home
 		for _, home := range homesResponse.Homes {
 			hoge := []ReservationHome{}
 			hogeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
@@ -470,15 +471,28 @@ func getApiV1Homes(c echo.Context) error {
 				c.Echo().Logger.Errorf("Error occurred : %v", err)
 				return c.NoContent(http.StatusInternalServerError)
 			}
+			reservationHome, ok := reservationHomeMap[home.Id]
+
 			log.Print("==============================")
 			log.Print(hoge)
 			log.Print(reservationHomeMap)
 
-			reservationHome, ok := reservationHomeMap[home.Id]
 			if !ok || len(reservationHome) == 0 {
 				matchedHome = append(matchedHome, home)
 			}
+
+			if len(hoge) == 0 {
+				hogeRow = append(hogeRow, home)
+			}
+
 		}
+
+		log.Print("matchedRow")
+		log.Print(matchedHome)
+
+		log.Print("hogeRow")
+		log.Print(hogeRow)
+
 		homesResponse.Homes = matchedHome
 	}
 
