@@ -432,45 +432,63 @@ func getApiV1Homes(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	// TODO N+1 => In句でかき集める方式で対応
+	// TODO N+1
 	if startDate != "" && endDate != "" {
-		homeIdList := []string{}
-
-		for _, res := range homesResponse.Homes {
-			homeIdList = append(homeIdList, res.Id)
-		}
-
-		var reservationHome []ReservationHome
-		if len(homeIdList) > 0 {
-			getIsReserveHomeQuery, args, err := sqlx.In("SELECT * FROM isubnb.reservation_home WHERE home_id IN (?) AND ? <= date AND date < ?", homeIdList, startDate, endDate)
-
-			if err != nil {
-				c.Echo().Logger.Errorf("Error occurred : %v", err)
-			}
-
-			err = db.Select(&reservationHome, getIsReserveHomeQuery, args...)
-
-			if err != nil {
-				c.Echo().Logger.Errorf("Error occurred : %v", err)
-			}
-		}
-
-		reservationHomeMap := map[string][]ReservationHome{}
-
-		for _, rh := range reservationHome {
-			reservationHomeMap[strconv.Itoa(rh.HomeId)] = append(reservationHomeMap[strconv.Itoa(rh.HomeId)], rh)
-		}
-
 		var matchedHome []Home
 		for _, home := range homesResponse.Homes {
-			reservationHome, ok := reservationHomeMap[home.Id]
-			if !ok || len(reservationHome) == 0 {
+			var reservationHome []ReservationHome
+			getIsReserveHomeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
+			err := db.Select(&reservationHome, getIsReserveHomeQuery, home.Id, startDate, endDate)
+			if err != nil {
+				c.Echo().Logger.Errorf("Error occurred : %v", err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			if len(reservationHome) == 0 {
 				matchedHome = append(matchedHome, home)
 			}
 		}
-
 		homesResponse.Homes = matchedHome
 	}
+
+	// TODO N+1 => In句でかき集める方式で対応
+	// if startDate != "" && endDate != "" {
+	// 	homeIdList := []string{}
+
+	// 	for _, res := range homesResponse.Homes {
+	// 		homeIdList = append(homeIdList, res.Id)
+	// 	}
+
+	// 	var reservationHome []ReservationHome
+	// 	if len(homeIdList) > 0 {
+	// 		getIsReserveHomeQuery, args, err := sqlx.In("SELECT * FROM isubnb.reservation_home WHERE home_id IN (?) AND ? <= date AND date < ?", homeIdList, startDate, endDate)
+
+	// 		if err != nil {
+	// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
+	// 		}
+
+	// 		err = db.Select(&reservationHome, getIsReserveHomeQuery, args...)
+
+	// 		if err != nil {
+	// 			c.Echo().Logger.Errorf("Error occurred : %v", err)
+	// 		}
+	// 	}
+
+	// 	reservationHomeMap := map[string][]ReservationHome{}
+
+	// 	for _, rh := range reservationHome {
+	// 		reservationHomeMap[strconv.Itoa(rh.HomeId)] = append(reservationHomeMap[strconv.Itoa(rh.HomeId)], rh)
+	// 	}
+
+	// 	var matchedHome []Home
+	// 	for _, home := range homesResponse.Homes {
+	// 		reservationHome, ok := reservationHomeMap[home.Id]
+	// 		if !ok || len(reservationHome) == 0 {
+	// 			matchedHome = append(matchedHome, home)
+	// 		}
+	// 	}
+
+	// 	homesResponse.Homes = matchedHome
+	// }
 
 	if location != "" {
 		homesResponse.Homes = koazee.StreamOf(homesResponse.Homes).Filter(func(home Home) bool {
@@ -699,29 +717,69 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	// TODO まとめて取れそう
 	// GOING
 
+	formatDateList := []string{}
 	for endDate.Sub(date).Hours() >= 24 {
-
-	}
-	var calenderList CalenderResponse
-	for endDate.Sub(date).Hours() >= 24 {
-		var reservationHomeId []ReservationHome
 		formatDate := date.Format("2006-01-02")
-		getReservationHomeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND DATE(date) = ? AND is_deleted = ? ORDER BY user_id, home_id`
-		err = db.Select(&reservationHomeId, getReservationHomeQuery, homeId, formatDate, 0)
+		formatDateList = append(formatDateList, formatDate)
+		date = date.AddDate(0, 0, 1)
+	}
+
+	var reservationHomeMap = map[string][]ReservationHome{}
+	if len(formatDateList) > 0 {
+		var reservationHomeId []ReservationHome
+		getReservationHomeQuery, args, err := sqlx.In(`SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND DATE(date) = IN(?) AND is_deleted = ? ORDER BY user_id, home_id`, homeId, formatDateList, 0)
+
+		if err != nil {
+			log.Print(err)
+		}
+
+		err = db.Select(&reservationHomeId, getReservationHomeQuery, args...)
 		if err != nil {
 			c.Echo().Logger.Errorf("Error occurred : %v", err)
 			return c.NoContent(http.StatusInternalServerError)
 		}
+
+		for _, reservationHome := range reservationHomeId {
+			reservationHomeMap[*reservationHome.Date] = append(reservationHomeMap[*reservationHome.Date], reservationHome)
+		}
+	}
+
+	var calenderList CalenderResponse
+
+	newDate := time.Now()
+	for endDate.Sub(newDate).Hours() >= 24 {
+		formatDate := newDate.Format("2006-01-02")
 		var isReservable IsReservable
 		isReservable.Date = formatDate
-		if len(reservationHomeId) == 0 {
+		if len(reservationHomeMap[formatDate]) == 0 {
 			isReservable.Available = true
 		} else {
 			isReservable.Available = false
 		}
 		calenderList.Items = append(calenderList.Items, isReservable)
-		date = date.AddDate(0, 0, 1)
+		newDate = newDate.AddDate(0, 0, 1)
 	}
+
+	// var calenderList CalenderResponse
+	// for endDate.Sub(date).Hours() >= 24 {
+	// 	var reservationHomeId []ReservationHome
+	// 	formatDate := date.Format("2006-01-02")
+	// 	getReservationHomeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND DATE(date) = ? AND is_deleted = ? ORDER BY user_id, home_id`
+	// 	err = db.Select(&reservationHomeId, getReservationHomeQuery, homeId, formatDate, 0)
+	// 	if err != nil {
+	// 		c.Echo().Logger.Errorf("Error occurred : %v", err)
+	// 		return c.NoContent(http.StatusInternalServerError)
+	// 	}
+	// 	var isReservable IsReservable
+	// 	isReservable.Date = formatDate
+	// 	if len(reservationHomeId) == 0 {
+	// 		isReservable.Available = true
+	// 	} else {
+	// 		isReservable.Available = false
+	// 	}
+	// 	calenderList.Items = append(calenderList.Items, isReservable)
+	// 	date = date.AddDate(0, 0, 1)
+	// }
 
 	return c.JSON(http.StatusOK, calenderList)
 }
