@@ -760,7 +760,13 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	}
 
 	date := time.Now()
+	newDate := time.Now()
 	endDate := date.AddDate(0, 0, reservableDays[0])
+	newEndDate := newDate.AddDate(0, 0, reservableDays[0])
+
+
+	log.Print("endDate1")
+	log.Print(endDate)
 
 	// TODO まとめて取れそう
 	// とりあえずやった
@@ -771,8 +777,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		formatDateList = append(formatDateList, formatDate)
 		date = date.AddDate(0, 0, 1)
 	}
-	formatDate := date.Format("2006-01-02")
-	formatDateList = append(formatDateList, formatDate)
+	log.Print(formatDateList)
 
 	var reservationHomeMap = map[string][]ReservationHome{}
 	if len(formatDateList) > 0 {
@@ -789,11 +794,8 @@ func getApiV1HomeCalendar(c echo.Context) error {
 			return c.NoContent(http.StatusInternalServerError)
 		}
 
-		// var layout = "2022-02-20T00:00:00+09:00"
 		var layout = "2006-01-02"
 		for _, reservationHome := range reservationHomeId {
-			log.Print("**************")
-			log.Print(*reservationHome.Date)
 			orgDate, err := time.Parse(layout, strings.Split(*reservationHome.Date, "T")[0])
 			if err != nil {
 				log.Print(err)
@@ -804,21 +806,14 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		}
 	}
 
-	log.Print("reservationHomeMap")
-	log.Print(reservationHomeMap)
 
 	var calenderList CalenderResponse
 
-	newDate := time.Now()
-	for endDate.Sub(newDate).Hours() >= 24 {
+
+	for newEndDate.Sub(newDate).Hours() >= 24 {
 		formatDate := newDate.Format("2006-01-02")
 		var isReservable IsReservable
 		isReservable.Date = formatDate
-		log.Print("=============")
-		log.Print("formatDate")
-		log.Print(formatDate)
-		log.Print("matched reservationHomeMap")
-		log.Print(reservationHomeMap[formatDate])
 
 		matched, ok := reservationHomeMap[formatDate]
 		if !ok || len(matched) == 0 {
@@ -828,6 +823,10 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		}
 		calenderList.Items = append(calenderList.Items, isReservable)
 		newDate = newDate.AddDate(0, 0, 1)
+		log.Print("=================")
+		log.Print(newDate)
+		log.Print(endDate)
+		log.Print(endDate.Sub(newDate).Hours())
 	}
 
 	// var calenderList CalenderResponse
