@@ -491,7 +491,8 @@ func getApiV1Homes(c echo.Context) error {
 	numberOfPeople := c.QueryParam("number_of_people")
 	style := c.QueryParam("style")
 
-	getAllHomesQuery := `SELECT * FROM isubnb.home ORDER BY rate DESC, price ASC, name ASC`
+	// getAllHomesQuery := `SELECT * FROM isubnb.home ORDER BY rate DESC, price ASC, name ASC`
+	getAllHomesQuery := `SELECT * FROM isubnb.home ORDER BY rate_reverse ASC, price ASC, name ASC`
 	err := db.Select(&homesResponse.Homes, getAllHomesQuery)
 	if err != nil {
 		c.Echo().Logger.Errorf("Error occurred : %v", err)
@@ -764,7 +765,6 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	endDate := date.AddDate(0, 0, reservableDays[0])
 	newEndDate := newDate.AddDate(0, 0, reservableDays[0])
 
-
 	log.Print("endDate1")
 	log.Print(endDate)
 
@@ -806,9 +806,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		}
 	}
 
-
 	var calenderList CalenderResponse
-
 
 	for newEndDate.Sub(newDate).Hours() >= 24 {
 		formatDate := newDate.Format("2006-01-02")

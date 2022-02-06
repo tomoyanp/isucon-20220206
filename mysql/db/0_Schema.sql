@@ -29,6 +29,7 @@ CREATE TABLE  isubnb.home
     photo_4         MEDIUMTEXT NULL,
     photo_5         MEDIUMTEXT NULL,
     rate            DOUBLE NULL,
+    rate_reverse    GENERATED ALWAYS AS (rate * -1)
     owner_id        BIGINT NOT NULL,
     PRIMARY KEY (id),
     INDEX           home_user_id_fk_idx (owner_id ASC),
@@ -38,6 +39,8 @@ CREATE TABLE  isubnb.home
             ON DELETE NO ACTION
             ON UPDATE NO ACTION
 );
+
+create index home1 on isubnb.home(rate_reverse, price, name)
 
 CREATE TABLE isubnb.reservation_home
 (
@@ -61,6 +64,10 @@ CREATE TABLE isubnb.reservation_home
             ON DELETE NO ACTION
             ON UPDATE NO ACTION
 );
+
+create index reservation_home1 on isubnb.reservation_home(date);
+create index reservation_home2 on isubnb.reservation_home(home_id);
+create index reservation_home3 on isubnb.reservation_home(home_id, date);
 
 CREATE TABLE isubnb.activity
 (
