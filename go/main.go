@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -791,7 +792,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 		for _, reservationHome := range reservationHomeId {
 			log.Print("**************")
 			log.Print(*reservationHome.Date)
-			orgDate, err := time.Parse(layout, *reservationHome.Date)
+			orgDate, err := time.Parse(layout, strings.Split(*reservationHome.Date, "T")[0])
 			if err != nil {
 				log.Print(err)
 			}
