@@ -463,12 +463,17 @@ func getApiV1Homes(c echo.Context) error {
 
 		var matchedHome []Home
 		for _, home := range homesResponse.Homes {
-			// getIsReserveHomeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
-			// err := db.Select(&reservationHome, getIsReserveHomeQuery, home.Id, startDate, endDate)
-			// if err != nil {
-			// 	c.Echo().Logger.Errorf("Error occurred : %v", err)
-			// 	return c.NoContent(http.StatusInternalServerError)
-			// }
+			hoge := []ReservationHome{}
+			hogeQuery := `SELECT * FROM isubnb.reservation_home WHERE home_id = ? AND ? <= date AND date < ?`
+			err := db.Select(&hoge, hogeQuery, home.Id, startDate, endDate)
+			if err != nil {
+				c.Echo().Logger.Errorf("Error occurred : %v", err)
+				return c.NoContent(http.StatusInternalServerError)
+			}
+			log.Print("==============================")
+			log.Print(hoge)
+			log.Print(reservationHomeMap)
+
 			reservationHome, ok := reservationHomeMap[home.Id]
 			if !ok || len(reservationHome) == 0 {
 				matchedHome = append(matchedHome, home)
@@ -702,6 +707,7 @@ func getApiV1HomeCalendar(c echo.Context) error {
 	endDate := date.AddDate(0, 0, reservableDays[0])
 
 	// TODO まとめて取れそう
+	// GOING
 	var calenderList CalenderResponse
 	for endDate.Sub(date).Hours() >= 24 {
 		var reservationHomeId []ReservationHome
