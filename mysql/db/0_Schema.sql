@@ -40,7 +40,7 @@ CREATE TABLE  isubnb.home
             ON UPDATE NO ACTION
 );
 
-create index home1 on isubnb.home(rate_reverse, price, name)
+create index home1 on isubnb.home(rate_reverse, price, name);
 
 CREATE TABLE isubnb.reservation_home
 (
