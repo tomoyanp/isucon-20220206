@@ -445,13 +445,13 @@ func getApiV1Homes(c echo.Context) error {
 			getIsReserveHomeQuery, args, err := sqlx.In("SELECT * FROM isubnb.reservation_home WHERE home_id IN (?) AND ? <= date AND date < ?", homeIdList, startDate, endDate)
 
 			if err != nil {
-				log.Print(err)
+				c.Echo().Logger.Errorf("Error occurred : %v", err)
 			}
 
 			err = db.Select(&reservationHome, getIsReserveHomeQuery, args...)
 
 			if err != nil {
-				log.Print(err)
+				c.Echo().Logger.Errorf("Error occurred : %v", err)
 			}
 		}
 
